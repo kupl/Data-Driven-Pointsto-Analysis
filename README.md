@@ -10,11 +10,7 @@ This implementation aims to reproduce the main results we reported in the paper 
 - Java 7 (or higher) 
 - Python 2.x
 
-
-
 ### Setup Instruction
-
-#### Doop Framework
 
 ##### Datalog engine
 
@@ -37,7 +33,7 @@ Data-Driven-Doop$ source ~/.profile
 
 
 
-#### Data-Driven Points-to Analysis
+### Data-Driven Points-to Analysis
 
 Verifying installation is very easy. You can check the installation by running the following command:
 
@@ -71,15 +67,107 @@ The results say that
 
 In the implementation, you can find:
 
-- Data-Driven-Doop: This folder contains a Doop framework, which was modified to support our data-driven technique. The modifications include 1) new datalog rules to allow flexible context-depth handling and 2) additional analyses that are parameterized to context-depth-selection heuristics.
-- features: This folder contains definitions of atomic features we used in the paper. (Table 1)
+- Data-Driven-Doop: This folder contains a Doop framework, which was modified to support our data-driven technique. The modifications include 1) new Datalog rules to allow flexible context-depth handling and 2) additional analyses that are parameterized to context-depth-selection heuristics.
+- features: This folder will store feature extraction results during the learning phase.
 - eval.py: A Python script for reproducing Table 3. Data-driven context-sensitive analyses this script performs are pre-loaded with the learned heuristics. (Section 2.1)
 - learn.py: A Python script for reproducing Table 1 and Appendix B. (Section 2.2)
 
 ### Data-Driven-Doop
 
+We implemented our approach on top of a variant of Doop framework, which is introduced along with the paper "[Introspective analysis: context-sensitivity, across the board](https://dl.acm.org/citation.cfm?id=2594320)" by Smaragdakis et al. You can download the original copy of introspective version Doop framework from [here](https://yanniss.github.io/).
+
+Here are a list of important files we changed:
+
+##### 1. logic/context-sensitive.logic
+
+It has basic analysis rules that are shared by all analysis instances. In the original rules, analyzing a method invocation statement results one calling context. Following example is for static invocations:
+
+```
+MergeStaticMacro(?callerCtx, ?invocation, ?calleeCtx),
+CallGraphEdge(?callerCtx, ?invocation, ?calleeCtx, ?tomethod) <-
+  StaticMethodInvocationSkolemOpt(?callerCtx, ?invocation, ?tomethod).
+```
+
+In contrary, our implementation takes a invocation fact and assigns context depth from zero to two with respect to our context-sensitivity heuristic $\mathcal{H}$, which is expressed using `Select2` and `Select1`:
+
+```
+LMergeStaticMacro2(?callerCtx, ?invocation, ?calleeCtx),
+CallGraphEdge(?callerCtx, ?invocation, ?calleeCtx, ?tomethod) <-
+  Select2(?tomethod),
+  StaticMethodInvocationSkolemOpt(?callerCtx, ?invocation, ?tomethod).
+
+LMergeStaticMacro1(?callerCtx, ?invocation, ?calleeCtx),
+CallGraphEdge(?callerCtx, ?invocation, ?calleeCtx, ?tomethod) <-
+  !Select2(?tomethod),
+  Select1(?tomethod),
+  StaticMethodInvocationSkolemOpt(?callerCtx, ?invocation, ?tomethod).
+
+LMergeStaticMacro0(?callerCtx, ?invocation, ?calleeCtx),
+CallGraphEdge(?callerCtx, ?invocation, ?calleeCtx, ?tomethod) <-
+  !Select2(?tomethod),
+  !Select1(?tomethod),
+  StaticMethodInvocationSkolemOpt(?callerCtx, ?invocation, ?tomethod).
+```
+
+We did the same thing for virtual and special method invocations. You can easily find them by searching predicates `Select1` or `Select2`.
+
+##### 2. logic/select.logic
+
+This file contains definitions of `Select` and `Select2` predicates. The learning script `learn.py` changes the definitions during the learning phase.
+
+##### 3. logic/{012-object-sensitive+heap, s-012-object-sensitive+heap, 012-type-sensitive+heap}
+
+These folders contains modified versions of three context-sensitive analyses; object, selective-hybrid-object, and type sensitivities. Each analysis has `macros.logic` , which defines `MergeMacro` rules for producing `calleeCtx` fact. Similar to the case of `context-sensitive.logic`, we expanded the original rule into three in order to handle multiple context-depths in one place. For example, `012-object-sensitive+heap/macros.logic` has three macros for virtual method invocations as follows:
+
+```c
+//2-object-sensitive
+#define LMergeMacro2(callerCtx, invocation, hctx, heap, calleeCtx) \
+  Context(calleeCtx), \
+  ContextFromRealContext[RealHContextFromHContext[hctx], heap] = calleeCtx
+//1-object-sensitive
+#define LMergeMacro1(callerCtx, invocation, hctx, heap, calleeCtx) \
+  Context(calleeCtx), \
+  ContextFromRealContext[InitialHeapValue[], heap] = calleeCtx
+//context-insensitive
+#define LMergeMacro0(callerCtx, invocation, hctx, heap, calleeCtx) \
+  Context(calleeCtx), \
+  ContextFromRealContext[InitialHeapValue[], InitialHeapValue[]] = calleeCtx
+```
+
+We did the same thing for static method invocations.
+
+##### 4. logic/features.logic
+
+This file contains definitions of atomic features. The learning script `learn.py` changes the contents if necessary.
+
+### eval.py
+
+This script is for reproducing Table 3 in the paper. Usage is `./eval.py ANALYSIS BENCHMARK`. It returns points-to analysis report for a given target analysis (`ANALYSIS`) and benchmark (`BENCHMARK`).
+
+`ANALYSIS` can be a category name or an abbreviation of specific analysis. The script supports four categories --- `data`, `intro`, `normal`, and `insens` --- and each category (except for `insens`) means multiple context-sensitivities as follows:
+
+- `data`
+  - `s2objH+Data`: Data-driven selective hybrid 2-object-sensitive analysis with a context-sensitive heap
+  - `2objH+Data`: Data-driven 2-object-sensitive analysis with a context-sensitive heap
+  - `2-typeH+Data`: Data-driven 2-type-sensitive analysis with a context-sensitive heap
+- `intro`
+  - `introA-s2objH`, `introB-s2objH`: Introspective versions of selective hybrid 2-object-sensitive analysis with a context-sensitive heap
+  - `introA-2objH`, `introB-2objH`:  Introspective versions of 2-object-sensitive analysis with a context-sensitive heap
+  - `introA-typeH`, `introB-typeH`: Introspective versions of 2-type-sensitive analysis with a context-sensitive heap
+- `normal`
+  - `s2objH`: Unmodified selective hybrid 2-object-sensitive analysis with a context-sensitive heap
+  - `2objH`: Unmodified 2-object-sensitive analysis with a context-sensitive heap
+  - `2typeH`: Unmodified 2-type-sensitive analysis with a context-sensitive heap
+- `insens`: context-insensitive analysis
+
+For benchmarks, the script supports six large benchmarks in DaCapo suite: `eclipse`, `chart`, `bloat`, `xalan`, `jython`, and `hsqldb`. Also, you can use `all` keyword to run all those benchmarks at once.
+
+### learn.py
+
+This script is for learning Boolean formulas shown in Appendix B in the paper. Usage is simply `./learn.py ANALYSIS`. The argument `ANALYSIS` can be one of three context-sensitivities: `sobj`, `obj`, or `type`. Executing this script mainly does two things: 1) atomic feature extraction and 2) Boolean formula learning. Please note that this procedure fully runs our learning algorithm over the entire training set, so it takes about 2 days in total.
+
 
 
 ## VirtualBox Image
 
-We've archived a ready-to-run version of our implementation in ACM Digital Library ([Link](https://dl.acm.org/citation.cfm?doid=3152284.3133924)). In the page, you can find the download link "Auxiliary Archive" under the "Source Materials" section. Please note that the size of the VirtualBox image is about 7.2 GB and importing it to your machine may require additional 50GB.
+We've archived a ready-to-run version of our implementation in ACM Digital Library ([Link](https://dl.acm.org/citation.cfm?doid=3152284.3133924)). In the page, you can find the download link "Auxiliary Archive" under the "Source Materials" section. Please note that the size of the VirtualBox image is about 7.2 GB and importing it to your machine may require additional 50GB. 

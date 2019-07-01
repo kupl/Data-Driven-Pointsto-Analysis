@@ -166,6 +166,19 @@ For benchmarks, the script supports six large benchmarks in DaCapo suite: `eclip
 
 This script is for learning Boolean formulas shown in Appendix B in the paper. Usage is simply `./learn.py ANALYSIS`. The argument `ANALYSIS` can be one of three context-sensitivities: `sobj`, `obj`, or `type`. Executing this script mainly does two things: 1) atomic feature extraction and 2) Boolean formula learning. Please note that this procedure fully runs our learning algorithm over the entire training set, so it takes about 2 days in total.
 
+When the learning completes, the learned heuristic can be found in the `select.logic` file located in `Data-Driven-Doop/logic`. Analyzing benchmark with the learned heuristic can be done by executing following commands:
+
+```
+Data-Driven-Doop$ ./run -jre1.6 ANALYSIS jars/dacapo/BENCHMARK.jar
+```
+
+You should replace `ANALYSIS` with the full name of one you used in learning phase:
+
+- `sobj`: `s-012-object-sensitive+heap`
+- `obj`: `012-object-sensitive+heap`
+- `type`: `012-type-sensitive+heap`
+
+For available benchmarks, you can check `Data-Driven-Doop/jars/dacapo` directory.
 
 
 ## VirtualBox Image

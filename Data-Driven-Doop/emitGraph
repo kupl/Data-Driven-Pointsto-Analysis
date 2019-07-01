@@ -1,0 +1,63 @@
+#!/bin/bash
+
+set -e 		# Exit immediately if a command exits with a nonzero exit status
+set -u 		# Treat unset variables as an error
+#set -x 	# Print commands and their arguments as they are executed (debugging)
+
+if ! test "$#" = 1; then
+	echo "ERROR: Must specify database to analyse"
+	exit
+fi
+
+db=$1
+tempDir=tmp/${db}_extracted
+analysisDir=tmp/${db}_analysed
+
+bloxbatch -db $db -extractInstalledBlocks -dir $tempDir
+bloxanalysis.sh --extractedDir $tempDir --workspace $analysisDir
+
+
+res=`bloxbatch -db $analysisDir -query '
+lang:compiler:disableWarning:SPECIFIC_STARRED_EDGE_IN_SAFETY_GRAPH_CYCLE[]=true.
+
+_Res(level, typeId, typeName, level, typeId, typeName) ->
+	int[32](level), blox:compiler:predicate:type(typeId), string(typeName).
+
+_Res(0, Tid, T, 0,Tid, T) <-
+	blox:analysis:predicate:isTopType(Tid),
+	blox:analysis:predicate:localName[Tid] = T,
+	blox:analysis:predicate:declarationBlock(Tid, B),
+	blox:analysis:block:name[B] != "base_bootstrap",
+	blox:analysis:block:name[B] != "base_system".
+	
+_Res(N, SubTid, SubT, N1, Tid, T) <-
+	blox:analysis:predicate:hasSuperType(SubTid, Tid),
+	_Res(N1, Tid, T, _,  _, _), N = N1 + 1,
+	blox:analysis:predicate:localName[SubTid] = SubT,
+	blox:analysis:predicate:localName[Tid] = T.' | sed -r 's/ //g;s/\*//g'`
+
+levelOne=`echo -e "$res" | grep -r '^0'`
+rest=`echo -e "$res" | grep -v -r '^0'`
+
+
+(
+cat << EOF
+digraph "Type Hierarchy Graph"
+{ rankdir=RL; /* Direction: (Top, Bottom, Left, Right) */
+	{ rank = same; node [style=filled, fillcolor=gold1];
+
+EOF
+
+echo -e "$levelOne" | awk 'BEGIN { FS = "," } { printf "node_%s [label=\"%s\"]\n", $2, $3 }'
+
+echo -e "\n\t}\n"
+
+echo -e "$rest" | awk 'BEGIN { FS = "," } { printf "node_%s [label=\"%s\"];\nnode_%s -> node_%s;\n", $2, $3, $2, $5}'
+
+echo -e "\n}"
+) > tmp/graph.dot
+
+dot -Tsvg -o graph.svg tmp/graph.dot
+
+
+rm tmp/graph.dot

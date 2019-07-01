@@ -1,0 +1,157 @@
+# bash completion for doop
+
+_doop()
+{
+    COMPREPLY=()
+    local cur prev words
+
+    if declare -F _get_comp_words_by_ref &>/dev/null; then
+        _get_comp_words_by_ref -n : cur prev words
+    else
+        if declare -F _get_cword &>/dev/null; then
+            cur=$( _get_cword )
+        else
+            cur="${COMP_WORDS[COMP_CWORD]}"
+        fi
+        prev="${COMP_WORDS[COMP_CWORD-1]}"
+        words=("${COMP_WORDS[@]}")
+    fi
+
+    local bloxopts opts="-main \
+    -c --cache \
+    -ssa --transform-input \
+    -jre -jre1.3 -jre1.4 -jre1.5 -jre1.6 -jre1.7 \
+    -i --interactive \
+    --color --allow-phantom --solo-run --log-mem-stats \
+    --full-stats --sanity --averroes \
+    -tamiflex -dynamic -client -h --help \
+    --distinguish-class-string-constants \
+    --distinguish-all-string-constants \
+    --distinguish-no-string-constants \
+    --merge-string-buffers \
+    --no-context-repeat \
+    --field-based-static \
+    --field-based-dynamic \
+    --paddle-compat \
+    --disable-precise-exceptions \
+    --enable-imprecise-exceptions \
+    --disable-merge-exceptions \
+    --disable-reflective-methods \
+    --disable-reflection \
+    --enable-exception-flow"
+
+    bloxopts="-logLevel -logicProfile"
+
+    # Check if '--' was already given.
+    local i bloxstart=false
+    for (( i=0; i < ${#words[@]}-1; i++ )) ; do
+        if [[ "${words[i]}" == "--" ]] ; then
+            bloxstart=true
+            break
+        fi
+    done
+
+    # make options after '--' invoke bloxbatch completion
+    if $bloxstart ; then
+
+        local levels='all debugDetail debug information warning error none'
+        local categories="compiler runtime factbus watch \
+                          transaction lockset executionGraph \
+                          programGraph measureRuleGraph rtopt"
+
+        case "${prev}" in
+            -logLevel)
+                local prevopts=""
+
+                # Store previous options, if such exist
+                if [[ "$cur" == *:* ]]; then
+                    # remove backslash escape from :
+		            # cur=${cur//\\:/:}
+                    # store the part until last :
+                    prevopts="${cur%:*}:"
+                fi
+                
+                # Strip everything until the last ':' (including ':')
+                cur="${cur##*:}"
+                
+                compopt -o nospace
+
+                if [[ "$cur" == *@* ]]; then
+                    prevopts="${prevopts}${cur/%@*/@}"
+
+                    # Strip everything until the last '@' (including '@')
+                    cur="${cur#*@}"
+
+                    # Two cases: category plus ':' suffix for additional pair, 
+                    # or plain category for the last log-level option
+                    COMPREPLY=( $( compgen -P "${prevopts}" -S ':' -W "${categories}" -- "$cur" ) \
+                                $( compgen -P "${prevopts}" -W "${categories}" -- "$cur" ) )
+                else
+                    COMPREPLY=( $( compgen -P "${prevopts}" -S '@' -W "${levels}" -- "${cur}" ) )
+                fi
+                return 0
+                ;;
+            *)
+                ;;
+        esac
+
+        # relevant options completion
+        COMPREPLY=( $( compgen -W "${bloxopts}" -- ${cur} ) )
+        return 0
+    fi
+
+    case "${prev}" in
+        -main)
+            # class completion
+            _java_classes
+            return 0
+            ;;
+        -jre)
+            # jre versions
+            local versions=$(for i in `seq 3 7`; do echo "1.$i"; done)
+            COMPREPLY=( $( compgen -W "${versions}" -- "${cur}" ) )
+            return 0
+            ;;
+        -tamiflex)
+            # for tamiflex, search for *.tfx files
+            # _filedir tfx
+            _filedir tfx
+            return 0
+            ;;
+        -client)
+            # for client code, just do filename completion
+            _filedir logic
+            return 0
+            ;;
+        -dynamic)
+            # for dynamic, search for *.dyn files
+            _filedir
+            return 0
+            ;;
+        *)
+            ;;
+    esac
+
+    if [[ "$cur" == -* ]]; then
+        # relevant options completion
+        COMPREPLY=( $( compgen -W "${opts}" -- ${cur} ) )  
+    else
+        if [[ "$prev" == *sensitive* ]]; then
+            # jar file completion
+            _filedir jar
+        elif [[ "$prev" == *.jar ]]; then
+            # only -- can follow after jar argument
+            COMPREPLY=( "--" )
+        else
+            # analyses completion
+
+            # compute possible analyses
+            local doophome=`dirname $(readlink -f $( which doop ) )`
+            local i analyses=$( for i in ${doophome}/logic/*sensitive*; \
+                do echo `basename "$i"`; done | grep -v '\.logic$' )
+
+            COMPREPLY=( $( compgen -W "${analyses}" -- "${cur}" ) )
+        fi
+    fi
+} &&
+complete -F _doop $filenames doop

@@ -1,0 +1,132 @@
+#!/bin/bash
+
+set -e 		# Exit immediately if a command exits with a nonzero exit status
+set -u 		# Treat unset variables as an error
+#set -x 	# Print commands and their arguments as they are executed (debugging)
+
+bloxbatch=$LOGICBLOX_HOME/bin/bloxbatch
+
+tests=(
+	Stats:Simple:InsensVarPointsTo
+	VarPointsTo
+	Stats:Simple:InsensArrayIndexPointsTo
+	ArrayIndexPointsTo
+	Stats:Simple:InsensInstanceFieldPointsTo
+	InstanceFieldPointsTo
+	Stats:Simple:InsensStaticFieldPointsTo
+	StaticFieldPointsTo
+	Stats:Simple:InsensCallGraphEdge
+	CallGraphEdge
+	Reachable
+	ReachableContext
+	Stats:Simple:InsensReachableVar
+	Stats:Simple:ReachableVar
+	Stats:InsensThrowPointsTo
+	ThrowPointsTo
+)
+
+runtime=(
+	'benchmark time'
+	'loading statistics (simple) time'
+	'loading statistics time'
+	'sorting statistics time'
+)
+
+baselineDir="baselines"
+
+if ! test "$#" -ge 1; then
+	echo "ERROR: Must specify a database to test for regression"
+	exit
+fi
+
+database=$1
+if ! test -e "$database/.doop-meta"; then
+	echo "ERROR: Specified database is invalid"
+	exit
+fi
+
+analysis=`cat "$database/.doop-meta/analysis"`
+classlib=`cat "$database/.doop-meta/classlib"`
+jars=`cat "$database/.doop-meta/jars"`
+
+baselineDB="$baselineDir/$analysis/$classlib/$jars"
+
+addDatabase="false"
+if test $# -ge 2; then
+	if test $2 = "-add"; then
+		addDatabase="true"
+	fi
+fi
+
+if ! test -e "$baselineDB"; then
+	if test $addDatabase = "true"; then
+		mkdir -p $baselineDB
+		cp -r $database/* $database/.doop-meta $baselineDB
+		echo "Added specified database to baseline"
+	else
+		echo "ERROR: No compatible baseline entry found"
+		echo "Use '-add' to add specified database to baseline"
+	fi
+	exit
+fi
+
+databaseCommandLine=`cat "$database/.doop-meta/command-line" 2>/dev/null`
+baselineCommandLine=`cat "$baselineDB/.doop-meta/command-line" 2>/dev/null`
+
+echo "Database command-line: $databaseCommandLine"
+echo "Baseline command-line: $baselineCommandLine"
+
+echo "========================"
+echo "Testing against baseline"
+echo "========================"
+
+length=${#tests[@]}
+total=$length
+fails=0
+
+for (( i = 0 ; i < ${length} ; i++ ))
+do
+	currentTest=${tests[$i]}
+
+	databaseResult=`$bloxbatch -db $database -popCount $currentTest | awk '{ print $2 }'`
+	baselineResult=`$bloxbatch -db $baselineDB -popCount $currentTest | awk '{ print $2 }'`
+
+	if test $databaseResult = $baselineResult; then
+		printf "$(tput bold)$(tput setaf 2)PASS$(tput sgr0) : %s\n" $currentTest
+	else
+		printf "$(tput bold)$(tput setaf 1)FAIL$(tput sgr0) : %s (%'d VS %'d)\n" $currentTest $databaseResult $baselineResult
+		let fails="$fails + 1"
+	fi
+done
+
+echo "=========================="
+echo "Testing runtime attributes"
+echo "=========================="
+
+length=${#runtime[@]}
+let total="$total + $length"
+
+for (( i = 0 ; i < ${length} ; i++ ))
+do
+	runtimeAttr=${runtime[$i]}
+
+	databaseResult=$($bloxbatch -db $database -query '_(?value) <- Stats:Runtime(?value, "'"$runtimeAttr"'").')
+	baselineResult=$($bloxbatch -db $baselineDB -query '_(?value) <- Stats:Runtime(?value, "'"$runtimeAttr"'").')
+	if test "x$databaseResult" = "x" -o "x$baselineResult" = "x"; then
+		let total="$total - 1"
+		continue
+	fi
+
+	diff=$(echo "scale=2; $databaseResult - $baselineResult" | bc -q 2>/dev/null)
+	inRange=$(echo "(-7 < $diff) && ($diff < 7)" | bc -q 2>/dev/null)
+
+	if ! test $inRange = 0; then
+		printf "$(tput bold)$(tput setaf 2)PASS$(tput sgr0) : %s\n" "$runtimeAttr"
+	else
+		printf "$(tput bold)$(tput setaf 1)FAIL$(tput sgr0) : %s (%+.2f)\n" "$runtimeAttr" $diff
+		let fails="$fails + 1"
+	fi
+done
+
+echo "===================="
+echo "Failing tests: $(tput bold)$fails$(tput sgr0)/$total"

@@ -1,0 +1,15 @@
+#
+# Doop
+#
+^jars
+^externals
+^tmp
+^cache
+^last-analysis
+^results
+^logic/client/extensions
+^logic/client/client-extensions-catalogue.logic
+^soot-fact-generation/build/content/.*\.class
+^soot-fact-generation/build/.*\.jar
+^RUNTRACES
+^lib/averroes\.jar$

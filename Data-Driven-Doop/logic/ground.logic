@@ -1,0 +1,4 @@
+Empty(?meth)->MethodSignatureRef(?meth).
+Empty(?meth)<-MethodSignatureRef(?meth),string:like(?meth,"%asdfasdf%").
+All(?meth)->MethodSignatureRef(?meth).
+All(?meth)<-MethodSignatureRef(?meth).

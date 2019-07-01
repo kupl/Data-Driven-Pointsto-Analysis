@@ -1,0 +1,103 @@
+#!/bin/bash
+
+set -e 		# Exit immediately if a command exits with a nonzero exit status
+set -u 		# Treat unset variables as an error
+#set -x 	# Print commands and their arguments as they are executed (debugging)
+
+jarFiles=(
+	antlr
+	bloat
+	chart
+	eclipse
+	hsqldb
+	jython
+	luindex
+	lusearch
+	pmd
+	xalan
+)
+
+analyses=(
+	context-insensitive
+
+	1-object-sensitive
+	1-object-sensitive+heap
+	2-full-object-sensitive+heap
+	2-full-object-sensitive+2-heap
+	3-full-object-sensitive+3-heap
+	2-object-sensitive
+	2-object-sensitive+heap
+
+	1-type-sensitive+heap
+	2-type-sensitive+heap
+	3-type-sensitive+2-heap
+	3-type-sensitive+3-heap
+
+	1-call-site-sensitive
+	1-call-site-sensitive+heap
+	2-call-site-sensitive+heap
+	2-call-site-sensitive+2-heap
+
+	2-full-type-object-sensitive+heap
+	2-full-type-object-sensitive+2-heap
+	3-full-2-type-1-object-sensitive+2-heap
+	3-full-2-type-1-object-sensitive+3-heap
+	3-full-1-type-2-object-sensitive+3-heap
+
+	#ref-2-call-site-sensitive+2-heap
+	#ref-2-object-sensitive+heap
+	#ref-3-object-sensitive+2-heap
+)
+
+stats=(
+"elapsed"
+#"var points-to"
+#"call graph edges"
+#"reachable methods"
+#"reachable virtual call sites"
+#"polymorphic virtual call sites"
+#"null virtual call sites"
+#"reachable casts"
+#"reachable casts that may fail"
+)
+
+
+length1=${#jarFiles[@]}
+length2=${#analyses[@]}
+len3=${#stats[@]}
+for (( a = 0 ; a < $len3 ; a++ ))
+do
+	echo "++++++++++++++++++++++++++++++++++"
+	echo "${stats[$a]}"
+	echo "++++++++++++++++++++++++++++++++++"
+
+	for (( i = 0 ; i < ${length1} ; i++ ))
+	do
+		jarFile="${jarFiles[$i]}"
+
+		echo $jarFile
+
+		for (( j = 0 ; j < ${length2} ; j++ ))
+		do
+			analysis=${analyses[$j]}
+
+			#echo $analysis
+
+			str=`grep "${stats[$a]}" "${jarFile}_${analysis}.trace.ext" | grep -v app | grep -v fail`
+			if test "X$str" = "X" ; then echo -n "& - " ;
+			else echo -n "& $(expr `echo "$str" | awk 'BEGIN{FS = "----"} {print $2}'` / 1) " ; fi
+			#str1=`grep "var points-to" "${jarFile}_${analysis}.trace.ext" | grep -v app`
+			#str2=`grep "reachable variables" "${jarFile}_${analysis}.trace.ext" | grep -v app`
+			#if test "X$str1" = "X" ; then echo -n "& - " ;
+			#else
+			#	varpts=`echo "$str1" | awk 'BEGIN{FS = "----"} {print $2}'`
+			#	rvars=`echo "$str2" | awk 'BEGIN{FS = "----"} {print $2}'`
+			#	echo -n "& $(echo "scale=2; $varpts / $rvars" | bc -q 2>/dev/null) "
+			#fi
+
+		done
+		echo "\\\\"
+
+		echo
+	done
+done

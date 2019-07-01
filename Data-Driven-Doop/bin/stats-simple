@@ -1,0 +1,78 @@
+#!/bin/bash
+
+set -e 		# Exit immediately if a command exits with a nonzero exit status
+set -u 		# Treat unset variables as an error
+#set -x 	# Print commands and their arguments as they are executed (debugging)
+
+bloxbatch=$LOGICBLOX_HOME/bin/bloxbatch
+
+database=$1
+analysis=`cat $database/.doop-meta/analysis`
+
+function size()
+{
+	$bloxbatch -db $database -popCount $1 | awk '{ print $2 }'
+}
+
+function print2()
+{
+	printf "%-80s %'d\n" "$1" "$2"
+}
+
+function print3()
+{
+	printf "%-80s %'d (insens) / %'d (sens)\n" "$1" "$2" "$3"
+}
+
+
+#print3 "var points-to" $(size Stats:Simple:InsensVarPointsTo) $(size VarPointsTo)
+#print3 "array index points-to" $(size Stats:Simple:InsensArrayIndexPointsTo) $(size ArrayIndexPointsTo)
+print2 "polymorphic virtual call sites" $(size Stats:Simple:PolymorphicCallSite)
+print2 "reachable methods" $(size Reachable)
+print2 "reachable casts that may fail" $(size Stats:Simple:PotentiallyFailingCast)
+print2 "call graph edges" $(size CallGraphEdge) 
+# print3 "native call graph edges" $(size Stats:Simple:InsensNativeCallGraphEdge) $(size NativeCallGraphEdge)
+#print3 "instance field points-to" $(size Stats:Simple:InsensInstanceFieldPointsTo) $(size InstanceFieldPointsTo)
+#print3 "reachable variables" $(size Stats:Simple:InsensReachableVar) $(size Stats:Simple:ReachableVar)
+#print3 "static field points-to" $(size Stats:Simple:InsensStaticFieldPointsTo) $(size StaticFieldPointsTo)
+
+#print2 "virtual call sites (statically)" $(size VirtualMethodInvocation:In)
+#print2 "reachable virtual call sites" $(size Stats:Simple:ReachableVirtualMethodInvocation)
+#print2 "null virtual call sites" $(size Stats:Simple:NullVirtualMethodInvocation)
+#print2 "app virtual call sites (statically)" $(size Stats:Simple:Application:VirtualMethodInvocation)
+#print2 "app reachable virtual call sites" $(size Stats:Simple:Application:ReachableVirtualMethodInvocation)
+#print2 "app polymorphic virtual call sites" $(size Stats:Simple:Application:PolymorphicCallSite)
+#print2 "app null virtual call sites" $(size Stats:Simple:Application:NullVirtualMethodInvocation)
+#print2 "casts (statically)" $(size AssignCast)
+#print2 "reachable casts" $(size Stats:Simple:ReachableCast)
+#print2 "app casts (statically)" $(size Stats:Simple:Application:Cast)
+#print2 "app reachable casts" $(size Stats:Simple:Application:ReachableCast)
+#print2 "app reachable casts that may fail" $(size Stats:Simple:Application:PotentiallyFailingCast)
+#print2 "Method invo size" $(size MethodInvocationSignature)
+#print2 "U size" $(size Stats:Simple:ApplicationMethod)
+#print2 "D1 size" $(size Stats:Simple:ApplicationSelect1Method)
+#print2 "D2 size" $(size Stats:Simple:ApplicationSelect2Method)
+#print2 "UU size" $(size Stats:Simple:Method)
+#print2 "DD1 size" $(size Stats:Simple:Select1Method)
+#print2 "DD2 size" $(size Stats:Simple:Select2Method)
+#print2 "reachable size" $(size Stats:Simple:ReachableMethod)
+#print2 "reachable D2 size" $(size Stats:Simple:ReachableSelect2Method)
+#print2 "reachable D1 size" $(size Stats:Simple:ReachableSelect1Method)
+#print2 "App reachable size" $(size Stats:Simple:InsensReachableApplicationMethod)
+#print2 "App reachable D2 size" $(size Stats:Simple:ApplicationReachableSelect2Method)
+#print2 "App reachable D1 size" $(size Stats:Simple:ApplicationReachableSelect1Method)
+#print2 "MIS" $(size MethodInvocationSignature)
+
+#print2 "Select2" $(size SelectedInvo2)
+#print2 "Select1" $(size SelectedInvo1)
+#print2 "Total" $(size MethodInvocationRef)
+
+# print2 "array type" $(size ArrayType)
+# print2 "direct superclass" $(size DirectSuperclass)
+# print2 "direct superinterface" $(size DirectSuperinterface)
+# print2 "heap allocations" $(size HeapAllocationRef)
+# print2 "method implemented" $(size MethodImplemented)
+# print2 "method lookup" $(size MethodLookup)
+# print2 "superclass" $(size Superclass)
+# print2 "superinterface" $(size Superinterface)
+# print2 "variables" $(size VarRef)

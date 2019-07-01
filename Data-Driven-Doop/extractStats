@@ -1,0 +1,62 @@
+#!/bin/bash
+
+set -e 		# Exit immediately if a command exits with a nonzero exit status
+set -u 		# Treat unset variables as an error
+#set -x 	# Print commands and their arguments as they are executed (debugging)
+
+function usage()
+{
+  cat <<EOF
+Usage: extractStats matchingExpression extractDir
+
+  matchingExpression
+       Expression (in single quotes) for files to search.
+       E.g. 'RUNTRACES/*antlr*'
+
+  extractDir
+       Directory to store extracted stats.
+EOF
+}
+
+if test $# -lt 2 ; then usage ; exit ; fi
+if test "$1" = "-h" ; then usage ; exit ; fi
+
+files="$1"
+extractDir="$2"
+
+stats=(
+"var points-to"
+"call graph edges"
+"reachable variables"
+"reachable methods"
+"reachable virtual call sites"
+"polymorphic virtual call sites"
+"null virtual call sites"
+"reachable casts"
+"reachable casts that may fail"
+)
+
+##############################################
+
+t=()
+for (( i = 0 ; i < ${#stats[@]} ; i++ )) ; do t[$i]=`echo "${stats[$i]}" | sed -r 's/ /@/g'` ; done
+filter=`echo ${t[@]} | sed -r 's/ /|/g ; s/@/ /g'`
+
+for file in $files ; do
+	# Get the filename without the path
+	filename=${file##*/}
+	extractFile="$extractDir/$filename.ext"
+	res="$(printf '%s\n' $filename)"
+
+	str=`cat $file | awk 'BEGIN{OK=0} /START/{OK=1} /elapsed/{if(OK==1)print $3} /STOP/{OK=2}' | sed -r 's/^([0-9]+).*$/\1/'`
+	if test "X$str" = "X" ; then continue; fi
+	res=$(printf '%s\nelapsed time----%s\n' "$res" "$str")
+
+	str=`grep 'disk footprint (KB)' $file | sed -r 's/^[a-zA-Z \(\)]+[ ]+(.*)$/\1/;s/,//g'`
+	res=$(printf '%s\ndisk footprint (KB)----%s\n' "$res" "$(expr $str / 1024)")
+
+	str=`grep -E "$filter" "$file" | sed -r 's/^([ #a-zA-Z\-]+[a-zA-Z])[ ]+([,0-9]+)[ \(\)a-zA-Z/]+([,0-9]+).*$/\1 \2/g ; s/^([ #a-zA-Z\-]+[a-zA-Z])[ ]+([,0-9]+)$/\1----\2/g' | sed -r 's/,//g'`
+	res=$(printf '%s\n%s\n' "$res" "$str")
+
+	echo "$res" > $extractFile
+done

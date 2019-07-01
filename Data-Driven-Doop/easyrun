@@ -1,0 +1,163 @@
+#!/bin/bash
+
+constantArgs='-jre1.6'
+runArgs=(
+	"$constantArgs"
+#	"$constantArgs --transform-input"
+#	"$constantArgs -ssa"
+#	"$constantArgs -ssa --transform-input"
+)
+runArgsToPrefix=(
+	''
+#	'transform'
+#	'ssa'
+#	'ssa_transform'
+)
+
+dacapo=jars/dacapo
+jarFiles=(
+	$dacapo/antlr.jar
+	$dacapo/bloat.jar
+	$dacapo/chart.jar
+	$dacapo/eclipse.jar
+	#$dacapo/fop.jar
+	$dacapo/hsqldb.jar
+	$dacapo/jython.jar
+	$dacapo/luindex.jar
+	$dacapo/lusearch.jar
+	$dacapo/pmd.jar
+	$dacapo/xalan.jar
+)
+
+function specialArgs()
+{
+	case $1 in
+		"$dacapo/jython.jar") echo "--disable-reflection" ;;
+		"$dacapo/hsqldb.jar") echo "-main org.hsqldb.hsqldbDoopDriver --disable-reflection" ;;
+	esac
+}
+
+analyses=(
+	context-insensitive
+
+	1-object-sensitive
+	1-object-sensitive+heap
+	2-object-sensitive+heap
+#	2-object-sensitive+2-heap
+#	3-object-sensitive+3-heap
+
+#	1-type-sensitive+heap
+	2-type-sensitive+heap
+#	3-type-sensitive+2-heap
+#	3-type-sensitive+3-heap
+
+	1-call-site-sensitive
+	1-call-site-sensitive+heap
+#	2-call-site-sensitive+heap
+#	2-call-site-sensitive+2-heap
+
+#	2-full-type-object-sensitive+heap
+#	2-full-type-object-sensitive+2-heap
+#	3-full-2-type-1-object-sensitive+2-heap
+#	3-full-2-type-1-object-sensitive+3-heap
+#	3-full-1-type-2-object-sensitive+3-heap
+)
+
+##########################################################################
+################## No need to change below this point ####################
+##########################################################################
+
+set -e 		# Exit immediately if a command exits with a nonzero exit status
+set -u 		# Treat unset variables as an error
+#set -x 	# Print commands and their arguments as they are executed (debugging)
+
+function usage()
+{
+  cat <<EOF
+Usage: easyrun [-d resultsDir] [-p prefix]
+
+  -d resultsDir
+       Store output traces of analyses run, in directory resultsDir.
+       If it does not exist it is created. Defaults to current directory.
+
+  -p prefix
+       Prefixes output traces with the given prefix. This prefix is global.
+       It will apply to any run issued by this script. Other prefixes may also
+       apply (note that this global prefix precedes any other in the filename).
+       For more info check the array "runArgsToPrefix" in the script.
+EOF
+}
+
+if [ $# = 0 ] || [ "$1" = "-h" ] ; then usage ; exit ; fi
+
+resultsDir='.'
+globalPrefix=''
+
+# process options
+while test "${1:0:1}" = "-"; do
+	case $1 in
+		"-d")
+		  shift 1
+		  resultsDir="$1"
+		  shift 1
+		  ;;
+		"-p")
+		  shift 1
+		  globalPrefix="${1}_"
+		  shift 1
+		  ;;
+		*) break ;;
+	esac
+done
+
+#end=$#
+#jarFile="${!end}"
+#end=$((end - 1))
+#runArgs="${@:1:$end}"
+
+length0=${#runArgs[@]}
+length1=${#jarFiles[@]}
+length2=${#analyses[@]}
+for (( r = 0 ; r < ${length0} ; r++ ))
+do
+	currentRunArgs=${runArgs[$r]}
+	currentPrefix=${runArgsToPrefix[$r]}
+	if [ "x$currentPrefix" = 'x' ] ; then currentPrefix=$globalPrefix
+	else currentPrefix="${globalPrefix}${currentPrefix}_" ; fi
+
+	echo "==============================================="
+	echo "($((r+1)) / $length0) $currentRunArgs"
+	echo "==============================================="
+	echo
+
+	for (( i = 0 ; i < ${length1} ; i++ ))
+	do
+		jarFile=${jarFiles[$i]}
+		jarFileName=${jarFile##*/} 			# Get the filename without the path
+		#jarFileExt=${jarFileName##*.} 		# Get the extension
+		jarFileName=${jarFileName%.*} 		# Get the filename without the extension
+
+		echo "==============================================="
+		echo "($((i+1)) / $length1) $jarFileName"
+		echo "==============================================="
+		echo
+
+		for (( j = 0 ; j < ${length2} ; j++ ))
+		do
+			analysis=${analyses[$j]}
+
+			echo "==============================================="
+			echo "($((j+1)) / $length2) $analysis"
+			echo "==============================================="
+			echo
+
+			doop $currentRunArgs $(specialArgs $jarFile) $analysis $jarFile 2>&1 | tee "$resultsDir/${currentPrefix}${jarFileName}_${analysis}.trace"
+
+			#sleep 2 ; rm -rf cache/* results/* tmp/* ; rm -rf /dev/shm/LB_gkastrinis*/*
+
+			echo
+		done
+
+		echo
+	done
+done

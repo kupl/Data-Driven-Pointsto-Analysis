@@ -2,7 +2,17 @@
 
 This implementation aims to reproduce the main results we reported in the paper "[Data-driven context-sensitivity points-to analysis](https://dl.acm.org/citation.cfm?doid=3152284.3133924)" submitted to OOPSLA 2017. Specifically, Table 3 and learned formulas in Appendix B will be reproduced.
 
-[TOC]
+#### Table of Contents
+
+* [Getting-Started Guide](#Getting-Started-Guide)
+  * [Requirements](#Requirements)
+  * [Setup Instruction](#Setup-Instruction)
+  * [Data-Driven Points-to Analysis](#Data-Driven-Points-to-Analysis)
+* [Implementation Details](#Implementation-Details)
+  * [Data-Driven-Doop](#Data-Driven-Doop)
+  * [eval.py](#eval.py)
+  * [learn.py](#learn.py)
+* [VirtualBox Image](#VirtualBox-Image)
 
 ## Getting-Started Guide
 

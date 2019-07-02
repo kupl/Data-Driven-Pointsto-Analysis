@@ -2,6 +2,8 @@
 
 This implementation aims to reproduce the main results we reported in the paper "[Data-driven context-sensitivity points-to analysis](https://dl.acm.org/citation.cfm?doid=3152284.3133924)" submitted to OOPSLA 2017. Specifically, Table 3 and learned formulas in Appendix B will be reproduced.
 
+[TOC]
+
 ## Getting-Started Guide
 
 ### Requirements
@@ -46,7 +48,7 @@ You will see the results as follows:
 eclipse
 ==================================================================
 Running selective-2-object-sensitive+heap+Data points-to analysis
-analysis time                                              29.23s
+analysis time                                              24.34s
 polymorphic virtual call sites                              1,066
 reachable methods                                           7,971
 reachable casts that may fail                                 596
@@ -69,7 +71,7 @@ In the implementation, you can find:
 
 - Data-Driven-Doop: This folder contains a Doop framework, which was modified to support our data-driven technique. The modifications include 1) new Datalog rules to allow flexible context-depth handling and 2) additional analyses that are parameterized to context-depth-selection heuristics.
 - features: This folder will store feature extraction results during the learning phase.
-- eval.py: A Python script for reproducing Table 3. Data-driven context-sensitive analyses this script performs are pre-loaded with the learned heuristics. (Section 2.1)
+- eval.py: A Python script for reproducing Table 3 using learned heuristics. (Section 2.1)
 - learn.py: A Python script for reproducing Table 1 and Appendix B. (Section 2.2)
 
 ### Data-Driven-Doop
@@ -109,15 +111,15 @@ CallGraphEdge(?callerCtx, ?invocation, ?calleeCtx, ?tomethod) <-
   StaticMethodInvocationSkolemOpt(?callerCtx, ?invocation, ?tomethod).
 ```
 
-We did the same thing for virtual and special method invocations. You can easily find them by searching predicates `Select1` or `Select2`.
+We did the same thing for virtual and special method invocations. You can easily find them by searching predicates `Select1` or `Select2` in the file.
 
 ##### 2. logic/select.logic
 
-This file contains definitions of `Select` and `Select2` predicates. The learning script `learn.py` changes the definitions during the learning phase.
+This file contains definitions of `Select1` and `Select2` predicates. The learning script `learn.py` changes the definitions during the learning phase.
 
 ##### 3. logic/{012-object-sensitive+heap, s-012-object-sensitive+heap, 012-type-sensitive+heap}
 
-These folders contains modified versions of three context-sensitive analyses; object, selective-hybrid-object, and type sensitivities. Each analysis has `macros.logic` , which defines `MergeMacro` rules for producing `calleeCtx` fact. Similar to the case of `context-sensitive.logic`, we expanded the original rule into three in order to handle multiple context-depths in one place. For example, `012-object-sensitive+heap/macros.logic` has three macros for virtual method invocations as follows:
+These folders contains modified versions of three context-sensitive analyses; object, selective-hybrid-object, and type sensitivities. Each analysis has `macros.logic`, which defines `MergeMacro` rules for producing `calleeCtx` fact. Similar to the case of `context-sensitive.logic`, we expanded the original rule into three in order to handle multiple context-depths in one place. For example, `012-object-sensitive+heap/macros.logic` has three macros for virtual method invocations as follows:
 
 ```c
 //2-object-sensitive
@@ -144,7 +146,7 @@ This file contains definitions of atomic features. The learning script `learn.py
 
 This script is for reproducing Table 3 in the paper. Usage is `./eval.py ANALYSIS BENCHMARK`. It returns points-to analysis report for a given target analysis (`ANALYSIS`) and benchmark (`BENCHMARK`).
 
-`ANALYSIS` can be a category name or an abbreviation of specific analysis. The script supports four categories --- `data`, `intro`, `normal`, and `insens` --- and each category (except for `insens`) means multiple context-sensitivities as follows:
+`ANALYSIS` can be a category name or an abbreviation of specific analysis. The script supports four categories --- `data`, `intro`, `normal`, and `insens` --- and each category (except for `insens`) includes multiple context-sensitive analyses as follows:
 
 - `data`
   - `s2objH+Data`: Data-driven selective hybrid 2-object-sensitive analysis with a context-sensitive heap
@@ -164,7 +166,7 @@ For benchmarks, the script supports six large benchmarks in DaCapo suite: `eclip
 
 ### learn.py
 
-This script is for learning Boolean formulas shown in Appendix B in the paper. Usage is simply `./learn.py ANALYSIS`. The argument `ANALYSIS` can be one of three context-sensitivities: `sobj`, `obj`, or `type`. Executing this script mainly does two things: 1) atomic feature extraction and 2) Boolean formula learning. Please note that this procedure fully runs our learning algorithm over the entire training set, so it takes about 2 days in total.
+This script is for learning Boolean formulas shown in Appendix B in the paper. Usage is simply `./learn.py ANALYSIS`. The argument `ANALYSIS` can be one of three context-sensitivities: `sobj`, `obj`, or `type`. Executing this script mainly does two things: 1) atomic feature extraction and 2) learning Boolean formulas. Please note that this procedure fully runs our learning algorithm over the entire training set, so it takes about 2 days in total.
 
 #### 1. Algorithm 2
 
@@ -174,7 +176,7 @@ The `refine` function first makes the initial formula $f$ and worklist $W$ using
 
 #### 2. Using learned formulas
 
-When the learning completes, the learned heuristic can be found in the `select.logic` file located in `Data-Driven-Doop/logic`. Analyzing benchmark with the learned heuristic can be done by executing following commands:
+The learned heuristic can be found in the `select.logic` file located in `Data-Driven-Doop/logic`. Analyzing benchmark with the learned heuristic can be done by executing following commands:
 
 ```
 Data-Driven-Doop$ ./run -jre1.6 ANALYSIS jars/dacapo/BENCHMARK.jar

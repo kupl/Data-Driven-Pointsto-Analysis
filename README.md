@@ -166,6 +166,14 @@ For benchmarks, the script supports six large benchmarks in DaCapo suite: `eclip
 
 This script is for learning Boolean formulas shown in Appendix B in the paper. Usage is simply `./learn.py ANALYSIS`. The argument `ANALYSIS` can be one of three context-sensitivities: `sobj`, `obj`, or `type`. Executing this script mainly does two things: 1) atomic feature extraction and 2) Boolean formula learning. Please note that this procedure fully runs our learning algorithm over the entire training set, so it takes about 2 days in total.
 
+#### 1. Algorithm 2
+
+Functions `learn` and `refine` implement Algorithm 2 in the paper. The `learn` function takes current formulas (i.e., $f_1$ when learning $f_2$) and first evaluates performance and precision of atomic features w.r.t the current formulas (lines 545 ~ 553). This function also obtains upper and lower bounds of precision w.r.t the current formulas. The lower bound will be used to remove useless atomic features and accelerate the learning procedure (lines 557 ~ 560). The upper bound is used to set the precision criteria $\gamma$ (lines 562 ~ 594). Finally, the `learn` function calls `refine` to learn Boolean formulas (line 600).
+
+The `refine` function first makes the initial formula $f$ and worklist $W$ using atomic features (line 374 ~ 376). Than, the function iterates main refinements until the worklist is emptied (line 380 ~ 505). The main refinement loop repeatedly chooses a clause to refine (line 435) and conjoins it with the chosen atomic feature (line 439). Please note that Algorithm 2 always checks satisfiability of the refined formula's precision against $\gamma$ (function `need_further_refinement`) but ours skips the checking as many as possible to accelerate the learning procedure. For example, if the chosen atomic feature can prove more queries than the clause to conjoin, we can safely conclude that the refined formula's precision must be unchanged without calling points-to analysis. 
+
+#### 2. Using learned formulas
+
 When the learning completes, the learned heuristic can be found in the `select.logic` file located in `Data-Driven-Doop/logic`. Analyzing benchmark with the learned heuristic can be done by executing following commands:
 
 ```

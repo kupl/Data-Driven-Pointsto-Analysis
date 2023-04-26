@@ -15,7 +15,7 @@ function check-env()
 	    exit 1
     fi
 
-    LD_LIBRARY_PATH=$LOGICBLOX_HOME/bin
+    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LOGICBLOX_HOME/bin
     bloxbatch="$LOGICBLOX_HOME/bin/bloxbatch"
 
     if [[ ! -e $bloxbatch ]]; then

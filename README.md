@@ -58,7 +58,11 @@ You will see the results as follows:
 eclipse
 ==================================================================
 Running selective-2-object-sensitive+heap+Data points-to analysis
+...
+Pointer analysis START
 analysis time                                              24.34s
+Pointer analysis FINISH
+...
 polymorphic virtual call sites                              1,066
 reachable methods                                           7,971
 reachable casts that may fail                                 596

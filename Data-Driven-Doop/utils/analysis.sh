@@ -57,7 +57,7 @@ function create-database()
         # Skip if cached database already exists
 
         if [[ -e $cachedatabase ]] && flag-isset cache; then
-            #echo "using cached database (${cachedatabase}/)"
+            echo "using cached database (${cachedatabase}/)"
             break
         fi
 
@@ -69,7 +69,7 @@ function create-database()
             mkdir -p $cachefacts
             mv $DOOP_HOME/tmp/export/* $cachefacts
         else
-            #echo -n "generating facts ($injar $( meta-load deps )) in ${cachefacts}/ "
+            echo -n "generating facts ($injar $( meta-load deps )) in ${cachefacts}/ "
             local linked
 
             rm -rf $DOOP_HOME/tmp/facts
@@ -80,12 +80,12 @@ function create-database()
                 # Ensure that no dependencies were specified
                 if [[ $( meta-load deps ) == ${EMPTY_JAR} ]]
                 then
-                    #echo "Running JPhantom..."
+                    echo "Running JPhantom..."
                 
                     # Create complemented jar
                     complement=$( ${DOOP_HOME}/bin/complement-phantoms ${DOOP_HOME}/tmp )
 
-                    #echo "JPhantom finished executing. Complement created: $complement"
+                    echo "JPhantom finished executing. Complement created: $complement"
 
                     # new complemented jar location
                     injar="$complement"
@@ -170,26 +170,26 @@ function create-database()
 
             libdatabase="`annotate-db-path $DOOP_HOME/cache/analysis/${logicsum}/${jre}-phantom`/${inputsum}"
 
-            #echo "Searching for $libdatabase"
+            echo "Searching for $libdatabase"
 
             if [[ ! -d $libdatabase ]]; then
-                #echo "Preanalyzed library database is missing! Exiting..." >&2 
+                echo "Preanalyzed library database is missing! Exiting..." >&2 
                 exit 1
             fi
             
             # TODO: more checking .doop_meta of libdatabase
             
-            #echo -n "copying precomputed database of library from ${libdatabase}/ "
+            echo -n "copying precomputed database of library from ${libdatabase}/ "
             timing cp -R $libdatabase/* $cachedatabase
         else
-            #echo -n "creating database in ${cachedatabase}/ "
+            echo -n "creating database in ${cachedatabase}/ "
             timing $bloxbatch -db $cachedatabase -create -overwrite -blocks base
 
-            #echo -n "loading fact declarations "
+            echo -n "loading fact declarations "
             timing $bloxbatch -db $cachedatabase -addBlock -file $DOOP_HOME/logic/library/fact-declarations.logic
         fi
 
-        #echo -n "loading facts "
+        echo -n "loading facts "
         rm -rf $(dirname $cachedatabase)/facts
         ln -s $cachefacts $(dirname $cachedatabase)/facts
 
@@ -205,7 +205,7 @@ function create-database()
         rm $(dirname $cachedatabase)/facts
 
         if ! flag-isset libonly; then
-            #echo "setting main class to $main"
+            echo "setting main class to $main"
             $bloxbatch -db $cachedatabase -execute "+MainClass(x) <- ClassType(x), Type:Value(x:\"$main\")."
         fi
 
@@ -242,25 +242,25 @@ EOF
     done
 
     if ! flag-isset incremental; then
-        #echo -n "loading $analysis declarations "
+        echo -n "loading $analysis declarations "
         timing $bloxbatch -db $database -addBlock -file $DOOP_HOME/tmp/${analysis}-declarations.logic
 
         if flag-isset sanity; then
-            #echo -n "loading sanity rules "
+            echo -n "loading sanity rules "
             timing $bloxbatch -db $database -addBlock -file $DOOP_HOME/logic/library/sanity.logic
         fi
     fi
 
-    #echo -n "loading $analysis delta rules "
+    echo -n "loading $analysis delta rules "
     timing $bloxbatch -db $database -execute -file $DOOP_HOME/tmp/${analysis}-delta.logic
-    #echo -n "loading reflection delta rules "
+    echo -n "loading reflection delta rules "
     timing $bloxbatch -db $database -execute -file $DOOP_HOME/tmp/reflection-delta.logic
-    #echo -n "loading client delta rules "
+    echo -n "loading client delta rules "
     timing $bloxbatch -db $database -execute -file $DOOP_HOME/tmp/exception-flow-delta.logic
-    #echo -n "loading auxiliary delta rules "
+    echo -n "loading auxiliary delta rules "
     timing $bloxbatch -db $database -execute -file $DOOP_HOME/tmp/auxiliary-heap-allocations-delta.logic
 
-    #echo -n "loading $analysis rules "
+    echo -n "loading $analysis rules "
 
     # Log memory statistics
     if flag-isset memlog; then
@@ -282,7 +282,7 @@ EOF
 
     # Loading extensions
     if flag-isset client; then
-        #echo -n "loading client extensions"
+        echo -n "loading client extensions"
 
         # Read one filename per line
         while read extension; do
@@ -301,7 +301,7 @@ function reanalyze()
 {
     # Same arguments as analyze
 
-    #echo "loading $analysis refinement-delta rules "
+    echo "loading $analysis refinement-delta rules "
     preprocess $DOOP_HOME/logic/$analysis/refinement-delta.logic $DOOP_HOME/tmp/${analysis}-refinement-delta.logic
 
     timing $bloxbatch -db $database -execute -file $DOOP_HOME/tmp/${analysis}-refinement-delta.logic
@@ -318,13 +318,13 @@ function reanalyze()
 
 function link-result()
 {
-    #printf "${C_WHITE}making database available at ${C_GREEN}%s${C_RESET}\n" "$humandatabase"
+    printf "${C_WHITE}making database available at ${C_GREEN}%s${C_RESET}\n" "$humandatabase"
     mkdir -p $(dirname $humandatabase)
     rm -rf $humandatabase
 
     ln -s $database $humandatabase
 
-    #printf "${C_WHITE}making database available at ${C_GREEN}last-analysis${C_RESET}\n"
+    printf "${C_WHITE}making database available at ${C_GREEN}last-analysis${C_RESET}\n"
     rm -f $DOOP_HOME/last-analysis
 
     ln -s $(readlink $humandatabase) $DOOP_HOME/last-analysis

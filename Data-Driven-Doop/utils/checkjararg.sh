@@ -32,7 +32,7 @@ function check-injar()
         # themselves do not have all deps (e.g. pmd).
         
         local benchmark=$(basename $injar .jar)
-        #printf "${C_WHITE}running dacapo benchmark: ${C_GREEN}%s${C_RESET}\n" "$benchmark"
+        printf "${C_WHITE}running dacapo benchmark: ${C_GREEN}%s${C_RESET}\n" "$benchmark"
         
         local deps="${injar/%.jar/-deps.jar}"
         local dynamic="${injar/%.jar/.dynamic}"

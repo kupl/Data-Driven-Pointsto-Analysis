@@ -21,8 +21,8 @@ function benchmark()
 {
 	local timeLimit=5400
     local errstream="$DOOP_HOME/tmp/TIMER"
-	#echo "..."
-	#printf "${C_YELLOW}MBBENCH logicblox START${C_RESET}\n"
+	echo "..."
+	printf "${C_YELLOW}Pointer analysis START${C_RESET}\n"
 
 	set +e
 
@@ -60,14 +60,14 @@ function benchmark()
     flag-isset verbose && head -n -1 $errstream
 
 	printf "%-80s %ss\n" "analysis time" "$elapsedTime"
-	#printf "${C_YELLOW}MBBENCH logicblox STOP${C_RESET}\n"
+	printf "${C_YELLOW}Pointer analysis FINISH${C_RESET}\n"
 }
 
 
 function timing()
 {
     local errstream="$DOOP_HOME/tmp/TIMER"
-	#echo "..."
+	echo "..."
     set +e
 
     # Run command while recording its execution time
@@ -90,5 +90,5 @@ function timing()
     # Print error stream only inside verbose mode
     flag-isset verbose && head -n -1 $errstream
 
-    #echo "elapsed time: ${elapsedTime}s"
+    echo "elapsed time: ${elapsedTime}s"
 }

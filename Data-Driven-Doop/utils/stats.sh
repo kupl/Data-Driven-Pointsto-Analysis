@@ -19,7 +19,7 @@ function run-stats()
 {
     local database="$1"
 
-#	echo -n "loading statistics (simple) "
+	echo -n "loading statistics (simple) "
 	preprocess $DOOP_HOME/logic/library/statistics-simple.logic $DOOP_HOME/tmp/statistics-simple.logic
 
 	timing $bloxbatch -db $database -addBlock -file $DOOP_HOME/tmp/statistics-simple.logic
@@ -61,7 +61,7 @@ function run-stats()
 
 		local end=`date +%s`
 		let elapsedTime="$end - $start"
-#		echo "elapsed time: ${elapsedTime}s"
+		echo "elapsed time: ${elapsedTime}s"
 		$bloxbatch -db $database -execute "+Stats:Runtime($elapsedTime, \"sorting statistics time\")."
 	fi
 }
